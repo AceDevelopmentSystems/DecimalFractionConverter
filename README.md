@@ -9,9 +9,9 @@ Creates a Fraction object which allows you to extract :
 **InitialNumber** - Decimal - the initial number used to create the fraction.
 
 **WholePortions** - Long - value of whole portions of number e.g
-              - 100/4 = 25               
-              - 5/4   = 1 
-              - 3/4   = 0
+- 100/4 = 25               
+- 5/4   = 1 
+- 3/4   = 0
                
  **Numerator** - Long - The value placed above the horizontal line in a fraction is called a numerator. It signifies the number of parts taken out of the whole.
  
