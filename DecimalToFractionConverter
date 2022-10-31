@@ -1,0 +1,184 @@
+ public static class DecimalToFractionConverter
+ {
+     /// <summary>
+     /// Convert a Decimal to a Fraction (object) to display 1/4 instead of 0.25
+     /// Examples
+     /// ToFraction(61.666m);// 61 and 2/3
+     /// ToFraction(4.36666m);// 4 and 11/30
+     /// ToFraction(0.66m); // 2/3
+     /// ToFraction(0.36363636m); // 4/11
+     /// ToFraction(0.25m);//   1/4
+     ///
+     /// Danger!!! some numbers 0.857142857142857142 (6/7) does not work well not good at finding correct GCF
+     /// </summary>
+     /// <param name="decimalValue"></param>
+     /// <returns>Fraction</returns>
+
+     // Define other methods and classes here
+     public static Fraction ToFraction(decimal decimalValue)
+     {
+         var resultingFraction = new Fraction(decimalValue);
+         //Determine if we are dealing with negatives
+         resultingFraction.IsNegative = decimalValue < 0;
+         //Do we have repeating numbers  esential for calculating 1/3 etc
+
+         //Get the number of decimal points to allow for refactoring to integer values
+         var decimalPoints = BitConverter.GetBytes(decimal.GetBits(decimalValue)[3])[2];
+         var toWholeNumberFactor = (long)Math.Pow(10, decimalPoints);
+
+         //Top Number
+         var initialNumerator = (long)(decimalValue * toWholeNumberFactor);
+         //Bottom Number
+         var initialDenominator = (long)(1 * toWholeNumberFactor);
+         var stringNumerator = ((long)(toWholeNumberFactor * (decimalValue % 1))).ToString();
+         var repeated = FindPattern(stringNumerator);
+         if (repeated != null)
+         {
+
+             //We have repeating numbers in the list so how do we count the repeated numbers such as 0.33333...
+             var repeatedCount = new Regex(Regex.Escape(repeated)).Matches(stringNumerator).Count;
+             resultingFraction.RepeatedNumbers = (repeatedCount / repeated.Length);
+         }
+
+
+         //Fancy stuff now if we have repeating numbers
+         if (resultingFraction.RepeatedNumbers > 0)
+         {
+             var repeatingWholeNumberFactor = (int)Math.Pow(10, resultingFraction.RepeatedNumbers);
+             long parsedInt = 1;
+
+             var repeatedString = String.Concat(Enumerable.Repeat(repeated, resultingFraction.RepeatedNumbers))
+                 .Substring(0, resultingFraction.RepeatedNumbers);
+             long.TryParse(repeatedString, out parsedInt);
+             var originalInitial = resultingFraction.InitialNumber;
+             var repeatNumbersAdjustments = (decimal)((repeatingWholeNumberFactor * initialNumerator) + parsedInt);
+             //	repeatNumbersAdjustments =10000 * 436666;
+             var equaliser = ((repeatNumbersAdjustments - initialNumerator) / toWholeNumberFactor);
+
+             var gcfFactor = GreatestCommonFactor(repeatingWholeNumberFactor - 1, equaliser);
+             resultingFraction.GreatestCommonFactor = (long)gcfFactor;
+             resultingFraction.ImproperNumerator = (long)(equaliser / gcfFactor);
+             resultingFraction.Denominator = (repeatingWholeNumberFactor - 1) / resultingFraction.GreatestCommonFactor;
+
+         }
+         else
+         {
+
+
+             var gfc = GreatestCommonFactor((decimal)initialNumerator, (decimal)initialDenominator);
+             resultingFraction.GreatestCommonFactor = (long)gfc;
+             resultingFraction.ImproperNumerator = initialNumerator / resultingFraction.GreatestCommonFactor;
+             resultingFraction.Denominator = initialDenominator / resultingFraction.GreatestCommonFactor;
+         }
+
+
+
+
+
+         return resultingFraction;
+
+     }
+
+
+     public static decimal GreatestCommonFactor(decimal valueOne, decimal valueTwo)
+     {
+         var biggerNumber = Math.Max(valueOne, valueTwo);
+         var smallerNumber = Math.Min(valueOne, valueTwo);
+         var previousResult = biggerNumber;
+         var lastResult = biggerNumber;
+
+
+
+
+         do
+         {
+             lastResult = (lastResult - smallerNumber);
+
+             if (lastResult <= smallerNumber && lastResult > 0)
+             {
+                 previousResult = lastResult;
+             }
+
+             if (lastResult <= 0 && smallerNumber > previousResult)
+             {
+                 lastResult = smallerNumber;
+                 smallerNumber = previousResult;
+             }
+
+
+
+         } while (lastResult >= 0);
+
+
+
+         return previousResult;
+     }
+
+     public static string FindPattern(string text)
+     {
+         if (text == null || text.Length == 0)
+         {
+             return null;
+         }
+
+         var result = Enumerable
+             .Range(1, text.Length / 2)
+             .Where(n => text.Length % n == 0)
+             .Select(n => text.Substring(0, n))
+             .Where(
+                 pattern => Enumerable
+                     .Range(0, text.Length / pattern.Length)
+                     .SelectMany(i => pattern)
+                     .SequenceEqual(text))
+             .FirstOrDefault();
+
+         if (result == null)
+         {
+             result = FindPattern(text.Substring(1, text.Length - 1));
+         }
+
+         return result;
+     }
+
+
+ }
+ public class Fraction
+ {
+     public Fraction(decimal initialValue)
+     {
+         this.InitialNumber = initialValue;
+
+     }
+
+     public decimal InitialNumber { get; internal set; }
+
+     public long WholePortions
+     {
+         get
+         {
+             return ImproperNumerator / (Denominator > 0 ? Denominator : 1);
+         }
+     }
+
+     public long Numerator
+     {
+         get
+         {
+             return (ImproperNumerator % (Denominator > 0 ? Denominator : 1));
+         }
+     }
+
+     public long Denominator { get; set; }
+     public override string ToString()
+     {
+         var wholePortionsString = WholePortions > 0 ? WholePortions.ToString() : "";
+         return $"{wholePortionsString} {Numerator}/{Denominator}".Trim();
+     }
+
+     public long ImproperNumerator { get; set; }
+     public bool IsNegative { get; set; }
+     public long GreatestCommonFactor { get; set; }
+
+     public int RepeatedNumbers { get; set; } = 0;
+
+ }
